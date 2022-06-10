@@ -145,7 +145,7 @@ class GUI:
         play_btn = tk.Button(center_right_frame, text='Play & Record', command=playAndRec)
         stop_btn = tk.Button(center_right_frame, text='Stop', command=stopAudio)
         frame4 = tk.Frame(center_right_frame)
-        auto_var = tk.IntVar()
+        auto_var = tk.IntVar(value=1)
         auto_check = tk.Checkbutton(frame4, text='Auto', variable=auto_var, onvalue=1, offvalue=0)
 
         select_btn.config(width=12)
