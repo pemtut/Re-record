@@ -10,11 +10,18 @@ import numpy as np
 import pandas as pd
 import os
 
+import logging
+
 class GUI:
     def __init__(self):
         self.root = tk.Tk()
         self.root.title('Re-Record')
         self.root.iconbitmap('icon.ico')
+        logging.basicConfig(filename='log.txt',format='%(asctime)s: %(levelname)s:\t %(message)s', filemode='w')
+        logger = logging.getLogger()
+        logger.setLevel(logging.DEBUG)
+
+        logger.info('Start Application')
         
         # create container
         top_frame = tk.LabelFrame(self.root,text='Device Settings', width=690, height=100)
@@ -56,16 +63,20 @@ class GUI:
         def cancel():
             output_device_var.set(output_devices_name.loc[self.devices.selected_output_index])
             input_device_var.set(input_devices_name.loc[self.devices.selected_input_index])
+            logger.info('Cancel device setting successfully')
 
         def refresh():
             self.devices.refreshSetting()
             cancel()
+            logger.info('Refresh device setting successfully')
 
         def save():
             input_idx = int(self.devices.available_devices[self.devices.available_devices['name'] == input_device_var.get()].index[0])
             output_idx = int(self.devices.available_devices[self.devices.available_devices['name'] == output_device_var.get()].index[0])
+            logger.debug(f'input_idx = {input_idx}, output_idx = {output_idx}')
             self.devices.changeInputDevices(input_idx)
             self.devices.changeOutputDevices(output_idx)
+            logger.info('Save device setting successfully')
 
         save_btn = tk.Button(frame2, text='save', command=save)
         save_btn.config(width=10)
@@ -92,11 +103,15 @@ class GUI:
         frame3.grid_propagate(0)
 
         def setformatPath(path):
-            return path.replace('\\', '/')
+            result = path.replace('\\', '/')
+            logger.debug(f'set format from {path} to {result}')
+            return result
 
         def browsePath():
             path = fd.askdirectory()
             self.save_path.set(path)
+            logger.debug(f'Change directory to {path}')
+            logger.info('Change save directory successfully')
 
         save_to = tk.Label(frame3, text='save to :')
         self.save_path = tk.StringVar(value=(setformatPath(os.getcwd()) + '/record'))
@@ -115,6 +130,7 @@ class GUI:
         self.cancelID = ''
         def selectFile():
             paths = np.array(fd.askopenfilenames())
+            logger.debug(f'all select files: {paths}')
             listBox.insert('end', *paths)
             path = listBox.get(0)
             self.audio.loadFile(path)
@@ -122,24 +138,34 @@ class GUI:
         def stopAudio():
             self.audio.stopAudio()
             auto_var.set(0)
-            self.root.after_cancel(self.cancelID)
+            try:
+                self.root.after_cancel(self.cancelID)
+                logger.debug('After cancel song "{self.cancelID}"')
+            except Exception:
+                logger.error('Error in after cancel. Error message: {e}')
+            logger.info('Stop playing audio successfully')
 
         def afterPlay():
             self.audio.saveFile(setformatPath(self.save_path.get()))
             listBox.delete(0)
             path = listBox.get(0)
+            logger.info('Save record successfully')
             if( auto_var.get() and (path != '')):
                 self.audio.loadFile(path)
                 self.audio.palyAndRec()
+                logger.info(f'Start auto playing {path}')
                 self.cancelID = self.root.after(self.audio.time * 1000, afterPlay)
+                logger.debug(f'song "{self.cancelID}" is now playing')
 
         def playAndRec():
             path = listBox.get(0)
             if(path == ''):
                 return 
             self.audio.loadFile(path)
+            logger.info(f'Start playing {path}')
             self.audio.palyAndRec()
             self.cancelID = self.root.after(self.audio.time * 1000, afterPlay)
+            logger.debug(f'song "{self.cancelID}" is now playing')
 
         select_btn = tk.Button(center_right_frame, text='Select Files', command=selectFile)
         play_btn = tk.Button(center_right_frame, text='Play & Record', command=playAndRec)
