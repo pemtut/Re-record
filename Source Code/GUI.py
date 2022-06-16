@@ -1,7 +1,6 @@
 from importlib.resources import path
 import tkinter as tk
 from tkinter import filedialog as fd
-
 from pyparsing import col
 from audio import Audio
 from devices import Devices
@@ -9,6 +8,7 @@ import sounddevice as sd
 import numpy as np
 import pandas as pd
 import os
+import glob
 
 import logging
 
@@ -96,9 +96,9 @@ class GUI:
         # create Center Left GUI
         frame3 = tk.Frame(center_left_frame)
         frame3.config(width=540, height=30)
-        listBox = tk.Listbox(center_left_frame)
-        listBox.config(width=88, height=21)
-        listBox.grid(row=1,column=0, padx=5, pady=5)
+        self.listBox = tk.Listbox(center_left_frame,selectmode='extended')
+        self.listBox.config(width=88, height=21)
+        self.listBox.grid(row=1,column=0, padx=5, pady=5)
         frame3.grid(row=0, column=0, sticky='w')
         frame3.grid_propagate(0)
 
@@ -129,11 +129,25 @@ class GUI:
         self.audio = Audio()
         self.cancelID = ''
         def selectFile():
-            paths = np.array(fd.askopenfilenames())
-            logger.debug(f'all select files: {paths}')
-            listBox.insert('end', *paths)
-            path = listBox.get(0)
-            self.audio.loadFile(path)
+            try:
+                paths = np.array(fd.askopenfilenames())
+                logger.debug(f'all select files: {paths}')
+                self.listBox.insert('end', *paths)
+                path = self.listBox.get(0)
+                self.audio.loadFile(path)
+            except Exception as e:
+                logger.error('Error in select files. Error message: {e}')
+
+        def selectFolder():
+            try:
+                directory_path = fd.askdirectory()
+                file_paths = [setformatPath(e) for e in glob.glob(f'{directory_path}/*.wav')]
+                logger.debug(f'all files in folder: {file_paths}')
+                self.listBox.insert('end', *file_paths)
+                path = self.listBox.get(0)
+                self.audio.loadFile(path)
+            except Exception as e:
+                logger.error('Error in select folder. Error message: {e}')
 
         def stopAudio():
             self.audio.stopAudio()
@@ -141,14 +155,14 @@ class GUI:
             try:
                 self.root.after_cancel(self.cancelID)
                 logger.debug('After cancel song "{self.cancelID}"')
-            except Exception:
+            except Exception as e:
                 logger.error('Error in after cancel. Error message: {e}')
             logger.info('Stop playing audio successfully')
 
         def afterPlay():
             self.audio.saveFile(setformatPath(self.save_path.get()))
-            listBox.delete(0)
-            path = listBox.get(0)
+            self.listBox.delete(0)
+            path = self.listBox.get(0)
             logger.info('Save record successfully')
             if( auto_var.get() and (path != '')):
                 self.audio.loadFile(path)
@@ -158,7 +172,7 @@ class GUI:
                 logger.debug(f'song "{self.cancelID}" is now playing')
 
         def playAndRec():
-            path = listBox.get(0)
+            path = self.listBox.get(0)
             if(path == ''):
                 return 
             self.audio.loadFile(path)
@@ -166,23 +180,36 @@ class GUI:
             self.audio.palyAndRec()
             self.cancelID = self.root.after(self.audio.time * 1000, afterPlay)
             logger.debug(f'song "{self.cancelID}" is now playing')
+        
+        def removeFile():
+            selected_list = self.listBox.curselection()
+            logger.debug(f'selectied list : {selected_list}')
+            for i in selected_list[::-1]:
+                self.listBox.delete(i)
+            logger.info('Remove files successfully')
 
-        select_btn = tk.Button(center_right_frame, text='Select Files', command=selectFile)
+        select_files_btn = tk.Button(center_right_frame, text='Select Files', command=selectFile)
+        select_folder_btn = tk.Button(center_right_frame, text='Select Folder', command=selectFolder)
         play_btn = tk.Button(center_right_frame, text='Play & Record', command=playAndRec)
         stop_btn = tk.Button(center_right_frame, text='Stop', command=stopAudio)
         frame4 = tk.Frame(center_right_frame)
         auto_var = tk.IntVar(value=1)
         auto_check = tk.Checkbutton(frame4, text='Auto', variable=auto_var, onvalue=1, offvalue=0)
+        remove_btn = tk.Button(center_right_frame, text='Remove', command=removeFile)
 
-        select_btn.config(width=12)
+        select_files_btn.config(width=12)
+        select_folder_btn.config(width=12)
         play_btn.config(width=12)
         stop_btn.config(width=12)
+        remove_btn.config(width=12)
 
-        select_btn.grid(row=0, padx = 30, pady=20)
-        play_btn.grid(row=1)
-        frame4.grid(row=2,sticky='w', padx = 30, pady=5)
-        stop_btn.grid(row=3)
+        select_files_btn.grid(row=0, padx = 30, pady=5)
+        select_folder_btn.grid(row=1)
+        play_btn.grid(row=2, pady=5)
+        frame4.grid(row=3,sticky='w', padx = 30)
         auto_check.grid(row=0)
+        stop_btn.grid(row=4, pady=5)
+        remove_btn.grid(row=5)
 
 
 
