@@ -1,14 +1,14 @@
-from importlib.resources import path
 import tkinter as tk
 from tkinter import filedialog as fd
-from pyparsing import col
 from audio import Audio
 from devices import Devices
-import sounddevice as sd 
+import sounddevice as sd
+import soundfile as sf
 import numpy as np
 import pandas as pd
 import os
 import glob
+from tkinter import ttk
 
 import logging
 
@@ -17,6 +17,7 @@ class GUI:
         self.root = tk.Tk()
         self.root.title('Re-Record')
         self.root.iconbitmap('icon.ico')
+        self.audio = Audio()
         logging.basicConfig(filename='log.txt',format='%(asctime)s: %(levelname)s:\t %(message)s', filemode='w')
         logger = logging.getLogger()
         logger.setLevel(logging.DEBUG)
@@ -30,7 +31,7 @@ class GUI:
         top_frame.grid(row=0, sticky='ew', padx=1)
         center_frame.grid(row=1,sticky='nsew')
 
-        center_left_frame = tk.LabelFrame(center_frame, text='Waiting', width=545, height=400)
+        center_left_frame = tk.Frame(center_frame, width=545, height=400)
         center_right_frame = tk.LabelFrame(center_frame, text='Record', width=150, height=400)
 
 
@@ -94,10 +95,10 @@ class GUI:
         refresh_btn.grid(column=0, row=1)
 
         # create Center Left GUI
-        frame3 = tk.Frame(center_left_frame)
-        frame3.config(width=540, height=30)
+        frame3 = tk.LabelFrame(center_left_frame, text='Output')
+        frame3.config(width=540, height=79)
         self.listBox = tk.Listbox(center_left_frame,selectmode='extended')
-        self.listBox.config(width=88, height=21)
+        self.listBox.config(width=88, height=19)
         self.listBox.grid(row=1,column=0, padx=5, pady=5)
         frame3.grid(row=0, column=0, sticky='w')
         frame3.grid_propagate(0)
@@ -118,6 +119,19 @@ class GUI:
         save_path_input = tk.Entry(frame3, textvariable=self.save_path)
         browse = tk.Button(frame3, text='Browse', command=browsePath)
 
+        frame4 = tk.Frame(frame3)
+
+        fs_label = tk.Label(frame4, text='sample rate :')
+        self.fs = tk.StringVar(value='default')
+        fs_entry = ttk.Combobox(frame4, textvariable=self.fs)
+        fs_entry['values'] = (  'default',
+                                '44100',
+                                '48000')
+
+        format_label = tk.Label(frame4, text="format :")
+        self.format = tk.StringVar(value='WAV')
+        format_entry = tk.OptionMenu(frame4, self.format, *sf.available_formats().keys())
+
         browse.config(width=10)
         save_path_input.config(width=62)
 
@@ -125,8 +139,13 @@ class GUI:
         save_path_input.grid(row=0, column=1)
         browse.grid(row=0, column=2, padx=10)
 
+        frame4.grid(row=1,column=0, sticky='wnse', columnspan=2)
+        fs_label.grid(row=0, column=0)
+        fs_entry.grid(row=0, column=1, sticky='w')
+        format_label.grid(row=0, column=2)
+        format_entry.grid(row=0, column=3)
+
         # create Audio GUI
-        self.audio = Audio()
         self.cancelID = ''
         def selectFile():
             try:
@@ -160,7 +179,7 @@ class GUI:
             logger.info('Stop playing audio successfully')
 
         def afterPlay():
-            self.audio.saveFile(setformatPath(self.save_path.get()))
+            self.audio.saveFile(setformatPath(self.save_path.get()), self.fs.get(), self.format.get())
             self.listBox.delete(0)
             path = self.listBox.get(0)
             logger.info('Save record successfully')
